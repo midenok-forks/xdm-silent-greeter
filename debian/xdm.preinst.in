@@ -1,0 +1,25 @@
+#!/bin/sh
+# Debian xdm package pre-installation script
+# Copyright 1998-2001, 2003, 2004 Branden Robinson.
+# Licensed under the GNU General Public License, version 2.  See the file
+# /usr/share/common-licenses/GPL or <http://www.gnu.org/copyleft/gpl.txt>.
+# Acknowledgements to Stephen Early, Mark Eichin, and Manoj Srivastava.
+
+set -e
+
+THIS_PACKAGE=xdm
+THIS_SCRIPT=preinst
+
+#INCLUDE_SHELL_LIB#
+
+if [ "$1" = "install" ]; then
+  # Create a flag file that tells the postinst script this is an install, not
+  # an upgrade.
+  : >/var/run/xdm.install
+fi
+
+#DEBHELPER#
+
+exit 0
+
+# vim:set ai et sts=2 sw=2 tw=80:

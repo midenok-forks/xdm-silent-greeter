@@ -1,0 +1,48 @@
+From 8eb75e620cca2d9c64682942e171a07b00a60749 Mon Sep 17 00:00:00 2001
+From: Julien Cristau <jcristau@debian.org>
+Date: Wed, 23 Dec 2009 16:51:22 +0100
+Subject: [PATCH] Add timestamping to logging functions
+
+Based on patch by Branden Robinson <branden@debian.org>
+---
+ error.c |   20 +++++++++++++++++---
+ 1 files changed, 17 insertions(+), 3 deletions(-)
+
+Index: xdm/error.c
+===================================================================
+--- xdm.orig/error.c
++++ xdm/error.c
+@@ -64,9 +64,6 @@
+ 	va_end(args);		\
+     } while(0)
+ 
+-#define LogHeader(type)		\
+-    LogAppend("xdm %s (pid %ld): ", type, (long)getpid())
+-
+ /* Append more text to the log without a new header, right after
+    having called LogInfo or LogError */
+ void
+@@ -75,6 +72,23 @@
+     LogVarArgsWrite(fmt);
+ }
+ 
++static void
++LogHeader(const char *type) {
++    time_t seconds;
++    size_t rc = 0;
++    struct tm *timestamp = NULL;
++    char timebuf[256];
++    if (time(&seconds) != (time_t) -1)
++	timestamp = localtime(&seconds);
++
++    if (timestamp)
++	rc = strftime(timebuf, 255, "%c", timestamp);
++    if (!rc)
++	strcpy(timebuf, "(time unavailable)");
++
++    LogAppend("%s xdm %s (pid %ld): ", timebuf, type, (long)getpid());
++}
++
+ void
+ LogInfo(const char * fmt, ...)
+ {

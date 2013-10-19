@@ -1,0 +1,33 @@
+From: Julien Cristau <jcristau@debian.org>
+Subject: Append to the log file instead of truncating it
+
+Based on patch by Branden Robinson <branden@debian.org>
+
+Index: xdm/error.c
+===================================================================
+--- xdm.orig/error.c
++++ xdm/error.c
+@@ -38,6 +38,7 @@
+ 
+ #include <stdio.h>
+ #include <stdarg.h>
++#include <errno.h>
+ 
+ #include "dm.h"
+ #include "dm_error.h"
+@@ -140,13 +141,13 @@
+ {
+     int	i;
+     if (errorLogFile[0]) {
+-	i = creat (errorLogFile, 0666);
++	i = open (errorLogFile, O_WRONLY|O_CREAT|O_APPEND, 0666);
+ 	if (i != -1) {
+ 	    if (i != STDERR_FILENO) {
+ 		dup2 (i, STDERR_FILENO);
+ 		close (i);
+ 	    }
+ 	} else
+-	    LogError ("Cannot open errorLogFile %s\n", errorLogFile);
++	    LogError ("Cannot open errorLogFile %s: %s\n", errorLogFile, _SysErrorMsg (errno));
+     }
+ }

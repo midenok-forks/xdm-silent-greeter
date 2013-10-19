@@ -1,0 +1,11 @@
+# this one might need some ifdefs
+06_hurd_utsname.diff
+
+# patch 20 has signal safety issues
+20_xdm_log_timestamp.diff
+21_xdm_log_append.diff
+
+support_logfile_rotation.diff
+
+debian.diff
+doc_mention_xdm.options.diff

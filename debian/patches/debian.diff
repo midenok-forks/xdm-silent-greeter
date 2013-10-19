@@ -1,0 +1,166 @@
+# HG changeset patch
+# User ejka@imfi.kspu.ru
+# Node ID 96e35758da2d69a8a9cd281b25c7dcb7364f5d3b
+# Parent  24626b4361c54d148fbc4b7cf1a9f4f2de3ec74b
+Ported parts of 905_debian_xdm.diff. Some changes are now done through
+configure flags
+
+* config/Xservers.ws.cpp:
+  - add comments to help local admins
+  - run local server with TCP listening turned off for security
+* config/Xsession.cpp: replace guts with simple call to Debian's Xsession
+  script
+* config/xdm-config.cpp:
+  - Supply a simpler default configuration, so that no matter what X server
+    number is used, people get the same results.
+
+Index: xdm/config/Xservers.ws.cpp
+===================================================================
+--- xdm.orig/config/Xservers.ws.cpp
++++ xdm/config/Xservers.ws.cpp
+@@ -9,4 +9,26 @@
+ XCOMM look like:
+ XCOMM	XTerminalName:0 foreign
+ XCOMM
+-:0 local BINDIR/X :0 DEFAULTVT
++XCOMM When adding X servers, please keep the following things in mind:
++XCOMM - If the X server's number is not zero, it must be passed to the X
++XCOMM   server's command line as its first argument.
++XCOMM - When using the Xorg X server, it is wise to add the vtXX
++XCOMM   option to each local X server, since this is the only sure way
++XCOMM   of knowing in advance which X server attaches to which virtual
++XCOMM   console.
++XCOMM - SECURITY NOTE: Always pass the "-nolisten tcp" option to the X
++XCOMM   server, as shown in the examples below, unless you know you
++XCOMM   need the X server listening on a TCP port.  Omitting this
++XCOMM   option can expose your X server to attacks from remote hosts.
++XCOMM   Note also that SSH's X11 port-forwarding option works even with
++XCOMM   X servers that do not listen on a TCP port, so you do not need
++XCOMM   to remove the "-nolisten tcp" option for SSH's benefit.
++XCOMM - See the Xserver(1) manpage for a description of X server
++XCOMM   options.  If you are using the Xorg X server, see the
++XCOMM   Xorg(1) manpage for a description of options specific to it
++XCOMM   (such as "-depth").
++XCOMM
++XCOMM Examples for multiple local X displays:
++XCOMM :0 local BINDIR/X :0 vt9 -depth 15 -nolisten tcp
++XCOMM :1 local BINDIR/X :1 vt10 -depth 8 -nolisten tcp
++:0 local BINDIR/X :0 DEFAULTVT -nolisten tcp
+Index: xdm/config/Xsession.cpp
+===================================================================
+--- xdm.orig/config/Xsession.cpp
++++ xdm/config/Xsession.cpp
+@@ -1,84 +1,5 @@
+ XCOMM!SHELL_CMD
+ XCOMM
+ 
+-XCOMM redirect errors to a file in user's home directory if we can
+-
+-errfile="$HOME/.xsession-errors"
+-if ( umask 077 && cp /dev/null "$errfile" 2> /dev/null )
+-then
+-	exec > "$errfile" 2>&1
+-else
+-#ifdef MKTEMP_COMMAND
+-	mktemp=MKTEMP_COMMAND
+- 	for errfile in "${TMPDIR-/tmp}/xses-$USER" "/tmp/xses-$USER"
+-	do
+-		if ef="$( umask 077 && $mktemp "$errfile.XXXXXX" 2> /dev/null)"
+-		then
+-			exec > "$ef" 2>&1
+-			mv "$ef" "$errfile" 2> /dev/null
+- 			break
+- 		fi
+-	done
+-#else
+-XCOMM Since this system doesn't have a mktemp command to allow secure
+-XCOMM creation of files in shared directories, no fallback error log
+-XCOMM is being used.   See https://bugs.freedesktop.org/show_bug.cgi?id=5898
+-XCOMM
+-XCOMM 	for errfile in "${TMPDIR-/tmp}/xses-$USER" "/tmp/xses-$USER"
+-XCOMM	do
+-XCOMM		if ( umask 077 && cp /dev/null "$errfile" 2> /dev/null )
+-XCOMM		then
+-XCOMM			exec > "$errfile" 2>&1
+-XCOMM			break
+-XCOMM		fi
+-XCOMM	done
+-
+-	exec > /dev/null 2>&1
+-
+-#endif
+-fi
+-
+-case $# in
+-1)
+-	case $1 in
+-	failsafe)
+-		exec BINDIR/xterm -geometry 80x24-0-0
+-		;;
+-	esac
+-esac
+-
+-XCOMM The startup script is not intended to have arguments.
+-
+-startup=$HOME/.xsession
+-resources=$HOME/.Xresources
+-
+-if [ -s "$startup" ]; then
+-	if [ -x "$startup" ]; then
+-		exec "$startup"
+-	else
+-		exec /bin/sh "$startup"
+-	fi
+-else
+-	if [ -r "$resources" ]; then
+-		BINDIR/xrdb -load "$resources"
+-	fi
+-#if defined(__SCO__) || defined(__UNIXWARE__)
+-        [ -r /etc/default/xdesktops ] && {
+-                . /etc/default/xdesktops
+-        }
+-
+-        [ -r /etc/default/xdm ] && {
+-                . /etc/default/xdm
+-        }
+-
+-        XCOMM Allow the user to over-ride the system default desktop
+-        [ -r $HOME/.xdmdesktop ] && {
+-                . $HOME/.xdmdesktop
+-        }
+-
+-        [ -n "$XDESKTOP" ] && {
+-                exec `eval $XDESKTOP`
+-        }
+-#endif
+-	exec BINDIR/xsm
+-fi
++# invoke global X session script
++. /etc/X11/Xsession
+Index: xdm/config/xdm-config.cpp
+===================================================================
+--- xdm.orig/config/xdm-config.cpp
++++ xdm/config/xdm-config.cpp
+@@ -18,19 +18,16 @@
+ DisplayManager*resources:	XDMCONFIGDIR/Xresources
+ DisplayManager.willing:		SU nobody -c XDMSCRIPTDIR/Xwilling
+ ! All displays should use authorization, but we cannot be sure
+-! X terminals may not be configured that way, so they will require
+-! individual resource settings.
++! X terminals will be configured to support it, so those that do not will
++! require individual resource settings.
+ DisplayManager*authorize:	true
+ !
+ DisplayManager*chooser:		CHOOSERPATH
+ DisplayManager*startup:		XDMSCRIPTDIR/Xstartup
+ DisplayManager*session:		XDMSCRIPTDIR/Xsession
++DisplayManager*setup:		XDMSCRIPTDIR/Xsetup
+ DisplayManager*reset:		XDMSCRIPTDIR/Xreset
+ DisplayManager*authComplain:	true
+-! The following three resources set up display :0 as the console.
+-DisplayManager._0.setup:	XDMSCRIPTDIR/Xsetup_0
+-DisplayManager._0.startup:	XDMSCRIPTDIR/GiveConsole
+-DisplayManager._0.reset:	XDMSCRIPTDIR/TakeConsole
+ #ifdef XPM
+ DisplayManager*loginmoveInterval:	10
+ #endif /* XPM */

@@ -1,0 +1,45 @@
+Source: xdm
+Section: x11
+Priority: optional
+Maintainer: Debian X Strike Force <debian-x@lists.debian.org>
+Uploaders: David Nusinow <dnusinow@debian.org>, Brice Goglin <bgoglin@debian.org>, Cyril Brulebois <kibi@debian.org>
+Build-Depends:
+ debhelper (>= 5.0.0),
+ pkg-config,
+ libxmu-dev (>= 1:1.0.1),
+ libx11-dev (>= 2:1.0.0),
+ libxau-dev (>= 1:1.0.0),
+ libxaw7-dev (>= 1:1.0.1),
+ libpam0g-dev,
+ libselinux1-dev [!hurd-i386 !kfreebsd-i386 !kfreebsd-amd64],
+ libxinerama-dev (>= 1:1.0.1),
+ libxft-dev,
+ quilt,
+ automake,
+ libtool,
+ xutils-dev
+Standards-Version: 3.8.4
+Vcs-Git: git://git.debian.org/git/pkg-xorg/app/xdm
+Vcs-Browser: http://git.debian.org/?p=pkg-xorg/app/xdm.git
+
+Package: xdm
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ debconf (>= 1.2.9) | debconf-2.0,
+ x11-utils | xbase-clients | xmessage,
+ cpp,
+ lsb-base (>= 3.2-14),
+ x11-xserver-utils,
+ procps,
+Pre-Depends: x11-common (>= 1:7.0.0)
+Provides: x-display-manager
+Description: X display manager
+ xdm manages a collection of X servers, which may be on the local host or
+ remote machines.  It provides services similar to those provided by init,
+ getty, and login on character-based terminals: prompting for login name and
+ password, authenticating the user, and running a session.  xdm supports XDMCP
+ (X Display Manager Control Protocol) and can also be used to run a chooser
+ process which presents the user with a menu of possible hosts that offer
+ XDMCP display management.
