@@ -19,7 +19,7 @@
 #  TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 #  PERFORMANCE OF THIS SOFTWARE.
 
-SUBDIRS = config greeter
+SUBDIRS = config greeter greeter-silent
 
 bin_PROGRAMS = xdm xdmshell
 
@@ -184,6 +184,7 @@ lint:
 	$(LINT) $(ALL_LINT_FLAGS) $(xdmshell_CFLAGS) $(xdmshell_SOURCES)
 	$(LINT) $(ALL_LINT_FLAGS) $(chooser_CFLAGS) $(chooser_SOURCES) $(chooser_LDADD)
 	(cd greeter && $(MAKE) $(AM_MAKEFLAGS) lint)
+	(cd greeter-silent && $(MAKE) $(AM_MAKEFLAGS) lint)
 endif LINT
 
 .PHONY: ChangeLog INSTALL

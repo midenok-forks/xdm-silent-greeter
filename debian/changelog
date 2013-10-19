@@ -1,3 +1,10 @@
+xdm (1:1.1.10-3.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Enabled dynamic greeter
+
+ -- Aleksey Midenkov  <me@slim>  Sat, 29 Jan 2011 14:20:47 +0300
+
 xdm (1:1.1.10-3) unstable; urgency=low
 
   [ Samuel Thibault ]
