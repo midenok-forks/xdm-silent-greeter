@@ -1,3 +1,10 @@
+xdm (1:1.1.8-6.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Auto-login by environment XDM_LOGIN_USER, XDM_LOGIN_PASS
+
+ -- Alexey Midenkov <midenok@slim>  Fri, 06 Nov 2009 21:43:47 +0300
+
 xdm (1:1.1.8-6) unstable; urgency=low
 
   * Updated Spanish debconf translation, thanks to Francisco Javier Cuadrado

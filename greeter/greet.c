@@ -83,9 +83,7 @@ from The Open Group.
 #include "greet.h"
 #include "Login.h"
 
-#ifdef __OpenBSD__
 #include <syslog.h>
-#endif
 
 #if defined(SECURE_RPC) && defined(sun)
 /* Go figure, there's no getdomainname() prototype available */
@@ -355,6 +353,19 @@ Greet (struct display *d, struct greet_info *greet)
     XEvent		event;
     Arg		arglist[3];
 
+    {
+	static int first_time = 1;
+	char *user = getenv("XDM_LOGIN_USER");
+	if (user && first_time) {
+	    char *pass = (getenv("XDM_LOGIN_PASS") || "");
+	    greet->name = user;
+	    greet->password = pass;
+	    first_time = 0;
+	    return 0;
+	}
+    }
+
+
     XtSetArg (arglist[0], XtNallowAccess, False);
     XtSetValues (login, arglist, 1);
 
@@ -408,13 +419,9 @@ Greet (struct display *d, struct greet_info *greet)
 static void
 FailedLogin (struct display *d, struct greet_info *greet)
 {
-#ifdef __OpenBSD__
-    syslog(LOG_NOTICE, "LOGIN FAILURE ON %s",
-	   d->name);
     syslog(LOG_AUTHPRIV|LOG_NOTICE,
 	   "LOGIN FAILURE ON %s, %s",
 	   d->name, greet->name);
-#endif
     DrawFail (login);
 #ifndef USE_PAM
     bzero (greet->name, strlen(greet->name));
@@ -485,9 +492,7 @@ greet_user_rtn GreetUser(
 	LogError ("Cannot reopen display %s for greet window\n", d->name);
 	exit (RESERVER_DISPLAY);
     }
-#ifdef __OpenBSD__
-    openlog("xdm", LOG_ODELAY, LOG_AUTH);
-#endif
+    openlog("xdm", LOG_ODELAY | LOG_PID, LOG_AUTHPRIV);
 
     for (;;) {
 #ifdef USE_PAM
@@ -683,7 +688,7 @@ static int pamconv(int num_msg,
 	    "PAM_PROMPT_ECHO_OFF", "PAM_PROMPT_ECHO_ON",
 	    "PAM_ERROR_MSG", "PAM_TEXT_INFO" } ;
     
-    struct pam_message      *m;
+    const struct pam_message      *m;
     struct pam_response     *r;
 
     struct myconv_data	    *d = (struct myconv_data *) appdata_ptr;
