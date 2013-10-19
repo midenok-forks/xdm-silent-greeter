@@ -1,0 +1,160 @@
+#!/bin/sh
+# Debian xdm package pre-removal script
+# Copyright 1998-2004 Branden Robinson.
+# Licensed under the GNU General Public License, version 2.  See the file
+# /usr/share/common-licenses/GPL or <http://www.gnu.org/copyleft/gpl.txt>.
+# Acknowledgements to Stephen Early, Mark Eichin, and Manoj Srivastava.
+
+# $Id: xdm.prerm.in 189 2005-06-11 00:04:27Z branden $
+
+set -e
+
+# debconf may not be available if some massive purging is going on
+HAVE_DEBCONF=
+if [ -e /usr/share/debconf/confmodule ]; then
+  . /usr/share/debconf/confmodule
+  HAVE_DEBCONF=yes
+fi
+
+THIS_PACKAGE=xdm
+THIS_SCRIPT=prerm
+
+#INCLUDE_SHELL_LIB#
+
+DAEMON=/usr/bin/xdm
+
+case "$1" in
+  # we NEVER want to unconditionally stop xdm; see below
+  upgrade|failed-upgrade)
+    REMOVING=
+    ;;
+  remove|deconfigure)
+    REMOVING=yes
+    ;;
+esac
+
+STOP=
+# are we supposed to restart on upgrade?  if REMOVING xdm, we don't care what
+# the user says, we have to stop the daemon
+if grep -qs ^restart-on-upgrade /etc/X11/xdm/xdm.options ||
+   [ -n "$REMOVING" ]; then
+  # is there an xdm process running?
+  if start-stop-daemon --stop --quiet --signal 0 \
+      --name $(basename $DAEMON); then
+    # any children?
+    PARENTS=$(pidof $DAEMON || true)
+    CHILDREN=
+    if [ -n "$PARENTS" ]; then
+      for PROCESS in $PARENTS; do
+        # make sure we got numbers back
+        [ $PROCESS -eq $PROCESS ] 2> /dev/null ||
+          die "pidof returned non-numeric value"
+        # we could use grep -q here if ps would ignore SIGPIPE :-P
+        if (ps axj | grep "^ *$PROCESS" > /dev/null 2>&1); then
+          CHILDREN=yes
+        fi
+      done
+      if [ -n "$CHILDREN" ]; then
+        if [ -n "$HAVE_DEBCONF" ]; then
+          # ask the question
+          run db_input high xdm/stop_running_server_with_children
+          run db_go
+          # what did the user say?
+          ANSWER=
+          if db_get xdm/stop_running_server_with_children; then
+            ANSWER="$RET"
+          fi
+          if [ "$ANSWER" = "true" ]; then
+            STOP=yes
+          fi
+          # forget that we have seen the question; this is the sort of
+          # non-configuration question that should be asked every time
+          run db_fset xdm/stop_running_server_with_children seen false
+        fi
+      else
+        STOP=yes
+      fi
+    fi
+  fi
+fi
+
+if [ -n "$STOP" ]; then
+  invoke-rc.d xdm stop || true
+fi
+
+DEFAULT_DISPLAY_MANAGER_FILE=/etc/X11/default-display-manager
+
+if [ "$1" = "remove" ] || [ "$1" = "deconfigure" ]; then
+  if [ -n "$HAVE_DEBCONF" ]; then
+    # disown this question
+    run db_unregister shared/default-x-display-manager
+    # does the question still exist?
+    if db_get shared/default-x-display-manager; then
+      if db_metaget shared/default-x-display-manager owners; then
+        observe "X display managers now available are \"$OWNERS\""
+        run db_subst shared/default-x-display-manager choices "$RET"
+      fi
+      DEFAULT_DISPLAY_MANAGER=
+      if db_get shared/default-x-display-manager; then
+        DEFAULT_DISPLAY_MANAGER="$RET"
+      fi
+      # are we removing the currently selected display manager?
+      if [ -n "$DEFAULT_DISPLAY_MANAGER" ]; then
+        if [ "$THIS_PACKAGE" = "$DEFAULT_DISPLAY_MANAGER" ]; then
+          if [ -e "$DEFAULT_DISPLAY_MANAGER_FILE" ]; then
+            if db_get "$DEFAULT_DISPLAY_MANAGER/daemon_name"; then
+              # does the display manager file reference the current default?  if
+              # so, remove it because it will now be wrong
+              if [ -n "$RET" ]; then
+                if [ "$(cat "$DEFAULT_DISPLAY_MANAGER_FILE")" = "$RET" ]; then
+                  rm "$DEFAULT_DISPLAY_MANAGER_FILE"
+                fi
+              fi
+            fi
+          fi
+          # ask the user to choose a new default
+          run db_fset shared/default-x-display-manager seen false
+          run db_input critical shared/default-x-display-manager
+          run db_go
+          # if the default display manager file doesn't exist, write it with
+          # the path to the new default display manager
+          if ! [ -e "$DEFAULT_DISPLAY_MANAGER_FILE" ]; then
+            DEFAULT_DISPLAY_MANAGER=
+            if db_get shared/default-x-display-manager; then
+              DEFAULT_DISPLAY_MANAGER="$RET"
+            fi
+            if [ -n "$DEFAULT_DISPLAY_MANAGER" ]; then
+              warn "new default display manager has been selected; please be" \
+                   "sure to run \"dpkg-reconfigure $RET\" to ensure that it" \
+                   "is configured"
+              DAEMON_NAME=
+              if db_get "$DEFAULT_DISPLAY_MANAGER"/daemon_name; then
+                DAEMON_NAME="$RET"
+              fi
+              if [ -z "$DAEMON_NAME" ]; then
+                # If we were unable to determine the name of the selected daemon
+                # (for instance, if the selected default display manager doesn't
+                # provide a daemon_name question), guess.
+                DAEMON_NAME=$(which "$DEFAULT_DISPLAY_MANAGER" 2>/dev/null)
+                if [ -z "$DAEMON_NAME" ]; then
+                  warn "unable to determine path to default X display manager" \
+                       "$DEFAULT_DISPLAY_MANAGER; not updating" \
+                       "$DEFAULT_DISPLAY_MANAGER_FILE"
+                fi
+              fi
+              if [ -n "$DAEMON_NAME" ]; then
+                echo "$DAEMON_NAME" > "$DEFAULT_DISPLAY_MANAGER_FILE"
+              fi
+            fi
+          fi
+        fi
+      fi
+    fi
+  fi
+fi
+
+#DEBHELPER#
+
+exit 0
+
+# vim:set ai et sts=2 sw=2 tw=80:

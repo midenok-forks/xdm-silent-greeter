@@ -1,0 +1,127 @@
+From: Branden Robinson <branden@debian.org>
+Subject: Add timestamping to logging functions, except for LogOutOfMem()
+
+Index: xdm/error.c
+===================================================================
+--- xdm.orig/error.c
++++ xdm/error.c
+@@ -34,23 +34,41 @@
+  *
+  * error.c
+  *
+- * Log display manager errors to a file as
+- * we generally do not have a terminal to talk to
++ * Log display manager errors to a file as we generally do not have a
++ * terminal to talk to.
++ *
++ * Because we have child processes, and chatty things like X servers, we do
++ * not use syslog().
+  */
+ 
+-# include <stdio.h>
+-# include <stdarg.h>
++#include <errno.h>
++#include <stdio.h>
++#include <stdarg.h>
++#include <time.h>
+ 
+-# include "dm.h"
+-# include "dm_error.h"
++#include "dm.h"
++#include "dm_error.h"
+ 
+ #define WRITES(fd, buf) write(fd, buf, strlen(buf))
+ 
+-void LogInfo(char * fmt, ...)
++void
++LogInfo(char * fmt, ...)
+ {
+     char buf[1024];
+ 
+-    snprintf(buf, sizeof buf, "xdm info (pid %ld): ", (long)getpid());
++    time_t seconds;
++    struct tm *timestamp = NULL;
++    char timebuf[256];
++
++    if (time(&seconds) > (time_t) -1)
++	timestamp = localtime(&seconds);
++
++    strcpy(timebuf, "(time unavailable)");
++
++    if (timestamp != NULL)
++	strftime(timebuf, 255, "%c", timestamp);
++
++    snprintf(buf, sizeof buf, "%s xdm info (pid %ld): ", timebuf, (long)getpid());
+     WRITES(STDERR_FILENO, buf);
+     {
+ 	va_list args;
+@@ -61,11 +79,24 @@
+     WRITES(STDERR_FILENO, buf);
+ }
+ 
+-void LogError (char * fmt, ...)
++void
++LogError (char * fmt, ...)
+ {
+     char buf[1024];
+ 
+-    snprintf (buf, sizeof buf, "xdm error (pid %ld): ", (long)getpid());
++    time_t seconds;
++    struct tm *timestamp = NULL;
++    char timebuf[256];
++
++    if (time(&seconds) > (time_t) -1)
++      timestamp = localtime(&seconds);
++
++    strcpy(timebuf, "(time unavailable)");
++
++    if (timestamp != NULL)
++	strftime(timebuf, 255, "%c", timestamp);
++
++    snprintf (buf, sizeof buf, "%s xdm error (pid %ld): ", timebuf, (long)getpid());
+     WRITES(STDERR_FILENO, buf);
+     {
+ 	va_list args;
+@@ -76,11 +107,24 @@
+     WRITES(STDERR_FILENO, buf);
+ }
+ 
+-void LogPanic (char * fmt, ...)
++void
++LogPanic (char * fmt, ...)
+ {
+     char buf[1024];
+ 
+-    snprintf (buf, sizeof buf, "xdm panic (pid %ld): ", (long)getpid());
++    time_t seconds;
++    struct tm *timestamp = NULL;
++    char timebuf[256];
++
++    if (time(&seconds) > (time_t) -1)
++      timestamp = localtime(&seconds);
++
++    strcpy(timebuf, "(time unavailable)");
++
++    if (timestamp != NULL)
++	strftime(timebuf, 255, "%c", timestamp);
++
++    snprintf (buf, sizeof buf, "%s xdm panic (pid %ld): ", timebuf, (long)getpid());
+     WRITES(STDERR_FILENO, buf);
+     {
+ 	va_list args;
+@@ -92,8 +136,14 @@
+     _exit (1);
+ }
+ 
+-void LogOutOfMem (char * fmt, ...)
++void
++LogOutOfMem (char * fmt, ...)
+ {
++    /*
++     * No point messing with allocation of timeval structs and static
++     * buffers for the timestamp string if we're already out of memory...
++     */
++
+     fprintf (stderr, "xdm: out of memory in routine ");
+     {
+ 	va_list args;

@@ -1,0 +1,171 @@
+.\" $Id: xdm.options.5 642 2005-09-30 01:04:37Z dnusinow $
+.\"
+.\" Copyright 1998, 2002-2004 Branden Robinson <branden@debian.org>.
+.\"
+.\" This is free software; you may redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as
+.\" published by the Free Software Foundation; version 2.
+.\"
+.\" This is distributed in the hope that it will be useful, but
+.\" WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License with
+.\" the Debian operating system, in /usr/share/common-licenses/GPL;  if
+.\" not, write to the Free Software Foundation, Inc., 59 Temple Place,
+.\" Suite 330, Boston, MA 02111-1307 USA
+.TH xdm.options 5 "2004\-10\-31" "Debian Project"
+.SH NAME
+xdm.options \- configuration options for the X display manager
+.SH DESCRIPTION
+.I /etc/X11/xdm/xdm.options
+contains a set of flags that determine some of the behavior of the
+X display manager
+.BR xdm (1x).
+Most of
+.BR xdm 's
+behavior is customized through other files; consult the
+.B xdm
+manual page if this manual page does not describe the behavior you want to
+alter.
+.PP
+.I /etc/X11/xdm/xdm.options
+may contain comments, which begin with a hash mark (\(oq#\(cq) and end at
+the next newline, just like comments in shell scripts.
+The rest of the file consists of options which are expressed as words
+separated by hyphens, with only one option per line.
+Options are enabled by simply placing them in the file; they are disabled
+by prefixing the option name with \(oqno\-\(cq.
+.PP
+Available options are:
+.TP
+.B ignore\-nologin
+Normally, if the
+.BR nologin (5)
+file exists, its contents will be displayed using
+.BR xmessage (1x)
+(if xmessage is available), and the user will be returned to the
+.B xdm
+login screen after xmessage is dismissed instead of starting the X session.
+If this option is enabled,
+.B xdm
+starts a session as usual (after
+.B xmessage
+is dismissed, if
+.B xmessage
+is available and the
+.I nologin
+file exists).
+This behavior is disabled by default:
+.I nologin
+is heeded, not ignored.
+.TP
+.B restart\-on\-upgrade
+.B Enable this option with caution on \(oqproduction\(cq machines;
+it causes the daemon to be stopped and restarted on upgrade, even if the
+process has children (which means it is managing X sessions).
+Typically when a
+package that contains a daemon is being installed or upgraded, its
+maintainer scripts stop a running daemon process before installing the new
+binary, and restart it after the new binary is installed.
+Stopping
+.B xdm
+causes immediate termination of any sessions it manages; in some situations
+this could be an unwelcome surprise (for instance, for remote
+.B xdm
+users who had no idea the administrator was performing system maintenance).
+On the other hand, for machines that stay up for long periods of time,
+leaving the old daemon running can be a bad idea if the new version has,
+for instance, a fix for a security vulnerability (overwriting
+.BR xdm 's
+executable on the file system has no effect on the copy of
+.B xdm
+in memory).
+The
+.B xdm
+package's pre\-removal script checks to see if the
+.B xdm
+process has any
+children; if it does, it is possible that someone's session would be killed
+by stopping
+.BR xdm ,
+so a warning is issued and an opportunity to abort the upgrade of
+.B xdm
+is provided.
+Furthermore, restarting
+.B xdm
+on upgrade can be surprising, because a locally\-managed X server can
+change the active VT even while other packages are continuing to upgrade.
+If, by intent or accident, the X server does not honor the key sequence to
+switch VTs back to a virtual console, this can be undesirable.
+This behavior is disabled by default:
+.B xdm
+will be not be stopped or started during an upgrade of its package; the
+administrator will have to do so by hand (with
+.B invoke\-rc.d xdm restart
+or by rebooting the system) before the newly installed
+.B xdm
+binary is used.
+.TP
+.B start\-on\-install
+.B Enable this option with caution;
+it causes the
+.B xdm
+daemon to be started immediately after the package is installed.
+See the above entry regarding
+.B restart\-on\-upgrade
+for other caveats regarding the consequences of starting the
+.B xdm
+daemon during package management.
+This behavior is disabled by default:
+.B xdm
+will not be started when it is installed.
+Changing this setting can affect future installs if the package is removed,
+but not purged (which removes \(oqconffiles\(cq, including
+.IR xdm.options ).
+.TP
+.B use\-sessreg
+This option causes the
+.I /etc/X11/xdm/Xreset
+script to call the
+.BR sessreg (1x)
+program to register X sessions managed by
+.B xdm
+in the
+.BR utmp (5)
+and
+.BR wtmp (5)
+files.
+If it is disabled, the
+.I utmp
+and
+.I  wtmp
+files will have no record of
+.B xdm
+sessions.
+This behavior is enabled by default; sessreg will be used.
+.PP
+Users of older versions of the Debian system should note that the
+\(oqrun\-xconsole\(cq option has been removed.
+The shell script named
+.I /etc/X11/xdm/Xreset
+can be edited to disable or modify the running of xconsole on the
+.B xdm
+greeter screen; see
+.BR xdm (1x)
+for more information.
+.SH AUTHORS
+Stephen Early, Mark Eichin, and Branden Robinson customized
+.BR xdm 's
+startup and reset scripts and package maintainer scripts to implement the
+functionality described above.
+This manual page was written by Branden Robinson.
+.SH SEE ALSO
+.BR sessreg (1x),
+.BR xmessage (1x),
+.BR xdm (1x),
+.BR nologin (5),
+.BR utmp (5),
+.BR wtmp (5)
+.\" vim:set et tw=80:

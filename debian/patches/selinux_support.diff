@@ -1,0 +1,126 @@
+From: Manoj Srivastava <srivasta@golden-gryphon.com>
+Subject: xdm: add SELinux support
+
+History:
+Initial patch submitted in Debian bug#233551
+Forward-ported to modular X by Eugene Konev (changes: remove Imakefile hunks,
+add --with-selinux flag to configure.ac).
+Updated to latest SE Linux code by Russell Coker 3rd Aug 2008, with bugfix from
+Julien Cristau (Debian bug#493524).
+
+Index: xdm/configure.ac
+===================================================================
+--- xdm.orig/configure.ac
++++ xdm/configure.ac
+@@ -116,6 +116,23 @@
+ 		 fi])
+ fi
+ 
++use_selinux_default=no
++# Check for selinux support
++AC_ARG_WITH(selinux, AC_HELP_STRING([--with-selinux],[Add support for selinux]),
++	[USE_SELINUX=$withval], [USE_SELINUX=$use_selinux_default])
++if test "x$USE_SELINUX" != "xno" ; then
++   	old_LIBS="$LIBS"
++	LIBS=""
++	AC_SEARCH_LIBS(is_selinux_enabled,[selinux])
++	AC_CHECK_FUNC(is_selinux_enabled,
++		[AC_DEFINE(HAVE_SELINUX,1,[Add support for selinux])],
++		[if test "x$USE_SELINUX" != "xtry" ; then
++			AC_MSG_ERROR(["selinux support requested, but is_selinux_enabled not found."])
++		 fi])
++	XDM_LIBS="$XDM_LIBS $LIBS"
++	LIBS="$old_LIBS"
++fi
++
+ # FIXME: Find better test for which OS'es use su -m  - for now, just try to
+ # mirror the Imakefile setting of:
+ # if  defined(OpenBSDArchitecture) || defined(NetBSDArchitecture) || defined(FreeBSDArchitecture) || defined(DarwinArchitecture)
+Index: xdm/session.c
+===================================================================
+--- xdm.orig/session.c
++++ xdm/session.c
+@@ -36,6 +36,10 @@
+  * session.c
+  */
+ 
++#ifdef HAVE_CONFIG_H
++# include "config.h"
++#endif
++
+ #include "dm.h"
+ #include "dm_auth.h"
+ #include "dm_error.h"
+@@ -70,6 +74,11 @@
+ #include <prot.h>
+ #endif
+ 
++#ifdef HAVE_SELINUX
++#include <selinux/selinux.h>
++#include <selinux/get_context_list.h>
++#endif /* HAVE_SELINUX */
++
+ #ifndef GREET_USER_STATIC
+ # include <dlfcn.h>
+ # ifndef RTLD_NOW
+@@ -77,6 +86,42 @@
+ # endif
+ #endif
+ 
++#ifdef HAVE_SELINUX
++/* This should be run just before we exec the user session. */
++static int
++xdm_selinux_setup (const char *login)
++  {
++	security_context_t scontext;
++	int ret = -1;
++	char *seuser=NULL;
++	char *level=NULL;
++
++	/* If SELinux is not enabled, then we don't do anything. */
++	if ( is_selinux_enabled () <= 0)
++		return TRUE;
++
++	if (getseuserbyname(login, &seuser, &level) == 0) {
++		ret=get_default_context_with_level(seuser, level, 0, &scontext);
++		free(seuser);
++		free(level);
++	}
++	if (ret < 0 || scontext == NULL) {
++		LogError ("SELinux: unable to obtain default security context for %s\n", login);
++		return FALSE;
++	}
++
++	if (setexeccon (scontext) != 0) {
++	freecon (scontext);
++	LogError ("SELinux: unable to set executable context %s\n",
++	      (char *)scontext);
++	return FALSE;
++	}
++
++	freecon (scontext);
++	return TRUE;
++}
++#endif /* HAVE_SELINUX */
++
+ static	int	runAndWait (char **args, char **environ);
+ 
+ #ifdef HAVE_GRP_H
+@@ -785,6 +830,17 @@
+ 	    bzero(passwd, strlen(passwd));
+ 
+ 	SetUserAuthorization (d, verify);
++#ifdef HAVE_SELINUX
++   /*
++    * For Security Enhanced Linux:
++    * set the default security context for this user.
++    */
++   if ( ! xdm_selinux_setup (name)) {
++      LogError ("failed to set security context\n");
++       exit (UNMANAGE_DISPLAY);
++       return (0);
++   }
++#endif /* HAVE_SELINUX */
+ 	home = getEnv (verify->userEnviron, "HOME");
+ 	if (home)
+ 	    if (chdir (home) == -1) {

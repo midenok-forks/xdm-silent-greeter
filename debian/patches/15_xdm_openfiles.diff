@@ -1,0 +1,62 @@
+From: Branden Robinson <branden@debian.org>
+Subject: [PATCH] openFiles() improvements
+
+Change openFiles() to avoid race-based symlink attacks.
+Change openFiles() to accept NULL for its third argument,
+and check for a NULL value before fopen()ing the first argument.
+
+Forward-ported by Julien Cristau <jcristau@debian.org>.
+
+Index: xdm/auth.c
+===================================================================
+--- xdm.orig/auth.c
++++ xdm/auth.c
+@@ -495,20 +495,45 @@
+ openFiles (char *name, char *new_name, FILE **oldp, FILE **newp)
+ {
+ 	mode_t	mask;
++	int newfd;
+ 
+ 	strcpy (new_name, name);
+ 	strcat (new_name, "-n");
++	/*
++	 * Set safe umask for file creation operations.
++	 */
+ 	mask = umask (0077);
++	/*
++	 * Unlink the authorization file we intend to create, and then open
++	 * it with O_CREAT | O_EXCL to avoid race-based symlink attacks.
++	 */
+ 	(void) unlink (new_name);
+-	*newp = fopen (new_name, "w");
++	newfd = open (new_name, O_WRONLY | O_CREAT | O_EXCL, 0600);
++	if (newfd >= 0)
++	    *newp = fdopen (newfd, "w");
++	else
++	{
++	    LogError ("Cannot create file %s: %s\n", new_name,
++		      _SysErrorMsg (errno));
++	    *newp = NULL;
++	}
++	/*
++	 * There are no more attempts to create files after this point;
++	 * restore the original umask.
++	 */
+ 	(void) umask (mask);
+ 	if (!*newp) {
+ 		Debug ("can't open new file %s\n", new_name);
+ 		return 0;
+ 	}
+-	if (!*oldp)
++	else
++	    Debug ("open succeeded: %s\n", new_name);
++	if (oldp)
++	{
+ 	    *oldp = fopen (name, "r");
+-	Debug ("opens succeeded %s %s\n", name, new_name);
++	    if (*oldp)
++		Debug ("open succeeded: %s\n", name);
++	}
+ 	return 1;
+ }
+ 

@@ -1,0 +1,22 @@
+From: Branden Robinson <branden@debian.org>
+Subject: [PATCH] auth.c: include <fcntl.h> for definitions of O_ flags to open().
+
+---
+ auth.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/auth.c b/auth.c
+index e3a0d66..4040930 100644
+--- a/auth.c
++++ b/auth.c
+@@ -42,6 +42,7 @@ from The Open Group.
+ #include <X11/Xlibint.h>
+ #include <sys/types.h>
+ #include <sys/stat.h>
++#include <fcntl.h>
+ 
+ #include "dm.h"
+ #include "dm_auth.h"
+-- 
+1.5.6.3
+

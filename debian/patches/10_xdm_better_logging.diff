@@ -1,0 +1,184 @@
+From: Branden Robinson <branden@debian.org>
+Subject: [PATCH] Use _SysErrorMsg() in the log message in various error conditions.
+
+Change LogError() invocations to use _SysErrorMsg() where errno might be
+set (and not clobbered by intermediate calls).  Also make LogError() the
+first thing we do after an error condition in those cases.
+
+Forward-ported by David Nusinow, Eugene Konev and Julien Cristau.
+
+Index: xdm/auth.c
+===================================================================
+--- xdm.orig/auth.c
++++ xdm/auth.c
+@@ -876,7 +876,8 @@
+     int	len, ipfd;
+ 
+     if ((ipfd = open ("/dev/ip", O_RDWR, 0 )) < 0)
+-        LogError ("Getting interface configuration");
++        LogError ("cannot get interface configuration; cannot open /dev/ip: "
++		  "%s\n", _SysErrorMsg (errno));
+ 
+     /* Indicate that we want to start at the begining */
+     ifnet.ib_next = (struct ipb *) 1;
+@@ -890,8 +891,9 @@
+ 
+ 	if (ioctl (ipfd, (int) I_STR, (char *) &str) < 0)
+ 	{
++	    LogError ("cannot get interface configuration; ioctl failed: %s\n",
++		      _SysErrorMsg (errno));
+ 	    close (ipfd);
+-	    LogError ("Getting interface configuration");
+ 	}
+ 
+ 	ifaddr.ia_next = (struct in_ifaddr *) ifnet.if_addrlist;
+@@ -902,8 +904,9 @@
+ 
+ 	if (ioctl (ipfd, (int) I_STR, (char *) &str) < 0)
+ 	{
++	    LogError ("cannot get interface configuration; ioctl failed: %s\n",
++		      _SysErrorMsg (errno));
+ 	    close (ipfd);
+-	    LogError ("Getting interface configuration");
+ 	}
+ 
+ 	/*
+@@ -1361,16 +1364,22 @@
+ 	doneAddrs ();
+ 	fclose (new);
+ 	if (unlink (name) == -1)
+-	    Debug ("unlink %s failed\n", name);
++	    if (errno != ENOENT)
++		LogError ("cannot remove old authorization file %s: %s\n",
++			  name, _SysErrorMsg (errno));
+ 	envname = name;
+ 	if (link (new_name, name) == -1) {
+-	    Debug ("link failed %s %s\n", new_name, name);
+-	    LogError ("Can't move authorization into place\n");
++	    LogError ("cannot link temporary authorization file %s to old "
++		      "location %s: %s\n", new_name, name,
++		      _SysErrorMsg (errno));
+ 	    setenv = 1;
+ 	    envname = new_name;
+ 	} else {
+-	    Debug ("new is in place, go for it!\n");
+-	    unlink (new_name);
++	    Debug ("authorization file %s successfully updated\n", name);
++	    if (unlink (new_name))
++		if (errno != ENOENT)
++		    LogError ("cannot remove new authorization file %s:"
++			      " %s\n", new_name, _SysErrorMsg (errno));
+ 	}
+ 	if (setenv) {
+ 	    verify->userEnviron = setEnv (verify->userEnviron,
+@@ -1440,13 +1449,19 @@
+ 	doneAddrs ();
+ 	fclose (new);
+ 	if (unlink (name) == -1)
+-	    Debug ("unlink %s failed\n", name);
++	    if (errno != ENOENT)
++		LogError ("cannot remove new authorization file %s: %s\n",
++			  name, _SysErrorMsg (errno));
+ 	if (link (new_name, name) == -1) {
+-	    Debug ("link failed %s %s\n", new_name, name);
+-	    LogError ("Can't move authorization into place\n");
++	    LogError ("cannot link temporary authorization file %s to old "
++		      "location %s: %s\n", new_name, name,
++		      _SysErrorMsg (errno));
+ 	} else {
+-	    Debug ("new is in place, go for it!\n");
+-	    unlink (new_name);
++	    Debug ("authorization file %s successfully updated\n", name);
++	    if (unlink (new_name))
++		if (errno != ENOENT)
++		    LogError ("cannot remove new authorization file %s:"
++			      " %s\n", new_name, _SysErrorMsg (errno));
+ 	}
+     }
+     XauUnlockAuth (name);
+Index: xdm/session.c
+===================================================================
+--- xdm.orig/session.c
++++ xdm/session.c
+@@ -610,20 +610,22 @@
+ 
+ #ifndef AIXV3
+ #ifndef HAS_SETUSERCONTEXT
+-	if (setgid(verify->gid) < 0) {
+-	    LogError ("setgid %d (user \"%s\") failed, errno=%d\n",
+-		     verify->gid, name, errno);
++	if (setgid (verify->gid) < 0) {
++	    LogError ("setgid %d (user \"%s\") failed: %s\n",
++		      verify->gid, name, _SysErrorMsg (errno));
+ 	    return (0);
+ 	}
+ #if defined(BSD) && (BSD >= 199103)
+-	if (setlogin(name) < 0) {
+-	    LogError ("setlogin for \"%s\" failed, errno=%d", name, errno);
+-	    return(0);
++	if (setlogin (name) < 0) {
++	    LogError ("setlogin for \"%s\" failed: %s\n", name,
++		      _SysErrorMsg (errno));
++	    return (0);
+ 	}
+ #endif
+ #ifndef QNX4
+-	if (initgroups(name, verify->gid) < 0) {
+-	    LogError ("initgroups for \"%s\" failed, errno=%d\n", name, errno);
++	if (initgroups (name, verify->gid) < 0) {
++	    LogError ("initgroups for \"%s\" failed: %s\n", name,
++		     _SysErrorMsg (errno));
+ 	    return (0);
+ 	}
+ #endif   /* QNX4 doesn't support multi-groups, no initgroups() */
+@@ -663,14 +665,15 @@
+ 	 */
+ 	pwd = getpwnam(name);
+ 	if (pwd) {
+-	    if (setusercontext(NULL, pwd, pwd->pw_uid, LOGIN_SETALL) < 0) {
+-		LogError ("setusercontext for \"%s\" failed, errno=%d\n", name,
+-		    errno);
++	    if (setusercontext (NULL, pwd, pwd->pw_uid, LOGIN_SETALL) < 0) {
++		LogError ("setusercontext for \"%s\" failed: %s\n", name,
++			  _SysErrorMsg (errno));
+ 		return (0);
+ 	    }
+ 	    endpwent();
+ 	} else {
+-	    LogError ("getpwnam for \"%s\" failed, errno=%d\n", name, errno);
++	    LogError ("getpwnam for \"%s\" failed: %s\n", name,
++		      _SysErrorMsg (errno));
+ 	    return (0);
+ 	}
+ #endif /* HAS_SETUSERCONTEXT */
+Index: xdm/socket.c
+===================================================================
+--- xdm.orig/socket.c
++++ xdm/socket.c
+@@ -78,7 +78,7 @@
+     Debug ("Created chooser socket %d\n", chooserFd);
+     if (chooserFd == -1)
+     {
+-	LogError ("chooser socket creation failed, errno %d\n", errno);
++	LogError ("chooser socket creation failed: %s\n", _SysErrorMsg (errno));
+ 	return;
+     }
+     listen (chooserFd, 5);
+@@ -156,14 +156,15 @@
+     fd = socket (sock_addr->sa_family, SOCK_DGRAM, 0);
+ 
+     if (fd == -1) {
+-	LogError ("XDMCP socket creation failed, errno %d\n", errno);
++	LogError ("XDMCP socket creation failed: %s\n", _SysErrorMsg (errno));
+ 	return fd;
+     }
+     RegisterCloseOnFork (fd);
+ 
+     if (bind (fd, sock_addr, salen) == -1)
+     {
+-	LogError ("error %d binding socket address %d\n", errno, request_port);
++	LogError ("error binding socket address %d: %s\n", request_port,
++		  _SysErrorMsg (errno));
+ 	close (fd);
+ 	fd = -1;
+ 	return fd;

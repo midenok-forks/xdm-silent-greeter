@@ -1,0 +1,97 @@
+#!/bin/sh
+# Debian xdm package post-removal script
+# Copyright 1998-2000, 2003, 2004 Branden Robinson.
+# Licensed under the GNU General Public License, version 2.  See the file
+# /usr/share/common-licenses/GPL or <http://www.gnu.org/copyleft/gpl.txt>.
+# Acknowledgements to Stephen Early, Mark Eichin, and Manoj Srivastava.
+
+# $Id: xdm.postrm.in 189 2005-06-11 00:04:27Z branden $
+
+set -e
+
+THIS_PACKAGE=xdm
+THIS_SCRIPT=postrm
+
+#INCLUDE_SHELL_LIB#
+
+OBSOLETE_CONFFILES="pixmaps/XFree86.xpm pixmaps/XFree86bw.xpm pixmaps/debian.xpm pixmaps/debianbw.xpm pixmaps/xorg.xpm pixmaps/xorg-bw.xpm"
+DAEMON=/usr/bin/X11/xdm
+
+if [ "$1" = "abort-install" ] || [ "$1" = "abort-upgrade" ]; then
+  if [ -d /usr/X11R6/lib/X11/xdm.moved-by-preinst ]; then
+    mv /usr/X11R6/lib/X11/xdm.moved-by-preinst /usr/X11R6/lib/X11/xdm
+  fi
+
+  # roll back removal of obsolete conffiles
+  for F in $OBSOLETE_CONFFILES; do
+    remove_conffile_rollback "/etc/X11/xdm/$F"
+  done
+
+  # roll back displacement of default display manager file
+  if [ -e "$DEFAULT_DISPLAY_MANAGER_FILE.dpkg-tmp" ]; then
+    observe "rolling back change of default X display manager"
+    mv "$DEFAULT_DISPLAY_MANAGER_FILE.dpkg-tmp" "$DEFAULT_DISPLAY_MANAGER_FILE"
+  fi
+fi
+
+#DEBHELPER#
+
+if [ "$1" = "purge" ]; then
+  update-rc.d xdm remove
+  for DIR in /etc/X11/xdm /var/lib/xdm; do
+    if [ -d "$DIR" ]; then
+      rm -r "$DIR"
+    fi
+  done
+fi
+
+if [ "$1" = "abort-upgrade" ]; then
+  # NOTE: The following is copied from the postinst script and isn't necessary
+  # if dpkg executes a package's postinst script with the "configure" argument
+  # after unwinding from a failed upgrade.  (See section 6.5 of the Debian
+  # Policy Manual, "Details of unpack phase of installation or upgrade".)
+
+  # We are here because an upgrade is being aborted; check the options file to
+  # see if the user wants the daemon (re-)started.
+  NOSTART=
+  XDM_WHERE=
+  # Don't start the daemon if the options file says not to.
+  if ! grep -qs ^restart-on-upgrade /etc/X11/xdm/xdm.options; then
+    NOSTART=yes
+  fi
+
+  # At this point we may think we *should* be starting the daemon, but we need
+  # to do some more checks.
+
+  # Also don't start the daemon if it's already running...
+  if [ -s /etc/X11/xdm/Xservers ]; then
+    MANAGED_DISPLAYS="$(egrep -v '^[[:space:]]*#' /etc/X11/xdm/Xservers \
+                        | sed 's/[[:space:]].*//')"
+    if [ -n "$MANAGED_DISPLAYS" ]; then
+      for MANAGED_DISPLAY in $MANAGED_DISPLAYS; do
+        if echo "$DISPLAY" | grep -q "^$MANAGED_DISPLAY"; then
+          # Note our refusal to start the daemon if we were supposed to start
+          # it.
+          [ -n "$NOSTART" ] || DENYSTART=yes
+          XDM_WHERE="$DISPLAY, which xdm will attempt to manage"
+          break
+        fi
+      done
+    fi
+  fi
+
+  # If the user wanted us to start the daemon but we refuse, explain why.
+  if [ -n "$DENYSTART" ]; then
+    warn "not starting xdm because it is already running at $XDM_WHERE"
+    NOSTART=yes
+  fi
+
+  [ -n "$NOSTART" ] || invoke-rc.d xdm start || true
+
+  # Remove flag files.
+  rm -f /var/run/xdm.install
+fi
+
+exit 0
+
+# vim:set ai et sts=2 sw=2 tw=80:

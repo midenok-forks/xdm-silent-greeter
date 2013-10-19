@@ -1,0 +1,84 @@
+From: Branden Robinson <branden@debian.org>
+Subject: improve error logging
+
+Make several LogError() and Debug() messages more informative.
+Change LogError() invocations to use _SysErrorMsg() where errno might be set
+(and not clobbered by intermediate calls).  Also make LogError() the first
+thing we do after an error condition in those cases.
+
+Forward-ported by Julien Cristau <jcristau@debian.org>.
+
+Index: xdm/auth.c
+===================================================================
+--- xdm.orig/auth.c
++++ xdm/auth.c
+@@ -376,6 +376,7 @@
+     int		i;
+     char	dummy_auth[] = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+ 		               "XXXXXXXXXXXXXXXXX"; /* 64 "X"s */
++    int		err = 0;
+ 
+     mask = umask (0077);
+     ret = MakeServerAuthFile(d, &auth_file);
+@@ -383,10 +384,8 @@
+     if (!ret)
+ 	return FALSE;
+     if (!auth_file) {
+-	Debug ("Can't creat auth file %s\n", d->authFile);
+-	LogError ("Cannot open server authorization file %s\n", d->authFile);
+-	free (d->authFile);
+-	d->authFile = NULL;
++	LogError ("cannot open server authorization file %s: %s\n",
++		  d->authFile, _SysErrorMsg (errno));
+ 	ret = FALSE;
+     }
+     else
+@@ -409,8 +408,7 @@
+ 		(void) fflush (auth_file);
+ 		if (ferror (auth_file))
+ 		{
+-		    LogError ("Cannot write server authorization file %s\n",
+-			      d->authFile);
++		    err = errno;
+ 		    ret = FALSE;
+ 		}
+ 		/*
+@@ -426,14 +424,15 @@
+ 	     * to the auth file so xrdb and setup programs don't fail.
+ 	     */
+ 	    if (auths[i]->data_length > 0)
+-		if (!XauWriteAuth (auth_file, auths[i]) ||
+-		    fflush (auth_file) == EOF)
++		if (!XauWriteAuth (auth_file, auths[i]))
++		{
++		    Debug ("XauWriteAuth() failed\n");
++		}
++		(void) fflush (auth_file);
++		if (ferror (auth_file))
+ 		{
+-		    LogError ("Cannot write server authorization file %s\n",
+-			      d->authFile);
++		    err = errno;
+ 		    ret = FALSE;
+-		    free (d->authFile);
+-		    d->authFile = NULL;
+ 		}
+     	}
+ 	/*
+@@ -444,6 +443,16 @@
+ 		Debug ("ftruncate() failed\n");
+ 	}
+ 	fclose (auth_file);
++
++    }
++    if (ret == FALSE)
++    {
++	LogError ("Cannot write to server authorization file %s%s%s\n",
++		  d->authFile,
++		  err ? ": " : "",
++		  err ? _SysErrorMsg (errno) : "");
++	free (d->authFile);
++	d->authFile = NULL;
+     }
+     return ret;
+ }

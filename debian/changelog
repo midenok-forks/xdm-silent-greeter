@@ -1,0 +1,324 @@
+xdm (1:1.1.8-6) unstable; urgency=low
+
+  * Updated Spanish debconf translation, thanks to Francisco Javier Cuadrado
+    (closes: #504059).
+  * xdm.init: Add Should-{Start,Stop}: hal.
+  * Split xdm_fixes.diff in multiple patches, and document them:
+    - 00_warning_fixes.diff: fix compiler warnings
+    - 01_xdm_include_fcntl.diff: auth.c: include <fcntl.h> for definitions of
+      O_ flags to open()
+    - 02_xdm_zombie_no_error.diff: downgrade an error to info message
+    - 03_spelling.diff: spelling fix
+    - 04_xdm_init_log_earlier.diff: Call InitErrorLog() right after
+      BecomeDaemon()
+    - 07_xdm_more_debug.diff: Add some more log and debug messages
+    - 08_xdm_execute_more_debug.diff: session.c: Add more debugging to
+      execute()
+    - 09_xdm_syserrormsg.diff: Use xdm's _SysErrorMsg() function instead of
+      merely printing errno
+    - 10_xdm_better_logging.diff: Use _SysErrorMsg() in the log message in
+      various error conditions
+    - 11_xdm_strerror.diff: Use xdm's _SysErrorMsg() function instead of
+      strerror()
+    - 12_remove_pidfile.diff: Add RemovePid() function, and register it with
+      atexit()
+    - 15_xdm_openfiles.diff: openFiles() improvements
+    - 20_xdm_log_timestamp.diff: Add timestamping to logging functions, except
+      for LogoutOfMem()
+    - 21_xdm_log_append.diff: Append to the log file if it already exists
+    - 90_xdm_write_dummy_auth.diff: Always attempt to write data to the auth
+      file
+    - 91_xdm_saveserverauth_logging.diff: improve error logging
+    - storepid_rewrite.diff: rewrite StorePid()
+  * Also add a header explaining the changes in debian.diff and
+    support_logfile_rotation.diff.
+  * Run autoreconf at build time; build-depend on automake, libtool and
+    xutils-dev.
+  * Allow parallel builds.
+  * Replace 'Suggests: sessreg | xutils' with dependency on x11-xserver-utils,
+    which also brings xrdb (closes: #527619).  Thanks, Phil Endecott!  Remove
+    explanation about why we need sessreg and cpp from the long description,
+    since we have a Depends on them now anyway.
+  * Cherry-pick one patch from upstream git to fix configure.ac for new
+    libXaw.
+  * Add README.source, bump Standards-Version to 3.8.1.
+
+ -- Julien Cristau <jcristau@debian.org>  Wed, 10 Jun 2009 16:19:31 +0200
+
+xdm (1:1.1.8-5) unstable; urgency=low
+
+  * Updated Polish debconf translation, thanks to Łukasz Paździora
+    (closes: #499073).
+
+ -- Julien Cristau <jcristau@debian.org>  Sun, 05 Oct 2008 20:55:43 +0200
+
+xdm (1:1.1.8-4) unstable; urgency=low
+
+  * Update SELinux patch to get the correct login context (closes: #493524).
+    Thanks, Russell Coker!
+  * debian.diff: Fix remaining bad reference to the auth dir in manpage.
+  * xdm_fixes.diff: open the log file *after* BecomeDaemon(), so we don't send
+    the log to /dev/null (closes: #495776).
+
+ -- Julien Cristau <jcristau@debian.org>  Wed, 20 Aug 2008 15:30:27 +0200
+
+xdm (1:1.1.8-3) unstable; urgency=medium
+
+  * debian/rules: make sure the install stamp is created, and don't try to
+    create the build dir if it already exists.  Fixes unreported FTBFS.
+
+ -- Julien Cristau <jcristau@debian.org>  Tue, 22 Jul 2008 15:30:36 +0200
+
+xdm (1:1.1.8-2) unstable; urgency=low
+
+  * Disable xdm-auth to work around an Xlib bug (closes: #486606).  Add a NEWS
+    entry warning people about XDM-AUTHORIZATION-1 cookies no longer working,
+    thanks to Bernhard R. Link.
+  * New patch 07_openlog.diff: call openlog() in the greeter to set the
+    service name/pid and get proper logging from pam (closes: #382037).
+
+ -- Julien Cristau <jcristau@debian.org>  Thu, 17 Jul 2008 19:06:41 +0200
+
+xdm (1:1.1.8-1) unstable; urgency=low
+
+  * Drop lintian overrides, they're unused anyway.
+  * Remove “-1” debian revision from Build-Depends (thanks to lintian).
+  * New upstream release.
+    + doesn't pass the chooser socket to children (closes: #67086)
+  * Change 'xbase-clients | xmessage' dependency to 'x11-utils | xbase-clients
+    | xmessage'.
+
+ -- Julien Cristau <jcristau@debian.org>  Thu, 22 May 2008 18:28:13 +0200
+
+xdm (1:1.1.7-1) unstable; urgency=low
+
+  [ David Nusinow ]
+  * Add Finnish translation, courtesy of Esko Arajärvi. closes: #468553
+
+  [ Julien Cristau ]
+  * New upstream release.
+  * Refresh patches.
+  * Fix LSB header in xdm.init: don't stop in the S runlevel.  Thanks, Petter
+    Reinholdtsen (closes: #469995).
+
+  [ Brice Goglin ]
+  * Add the upstream URL to debian/copyright.
+  * Add Vcs-Git and Vcs-Browser fields.
+  * Bump Standards-Version: to 3.7.3, no change needed.
+
+ -- Julien Cristau <jcristau@debian.org>  Wed, 12 Mar 2008 15:02:54 +0100
+
+xdm (1:1.1.6-4) unstable; urgency=low
+
+  * Remove /usr/bin/X11 from systemPath and userPath in xdm-config,
+    thanks Sven Joachim, closes: #451617.
+  * Drop -dpi 100 from debian.diff and add a NEWS entry about it,
+    closes: #237877.
+
+ -- Brice Goglin <bgoglin@debian.org>  Thu, 17 Jan 2008 20:50:21 +0100
+
+xdm (1:1.1.6-3) unstable; urgency=low
+
+  * Grab upstream commit 28f4ded22488ce8542ff8b9871f6b4e04614058d to
+    really fix config/Xresources.cpp, closes: #440389.
+
+ -- Brice Goglin <bgoglin@debian.org>  Fri, 21 Sep 2007 21:35:43 +0200
+
+xdm (1:1.1.6-2) unstable; urgency=low
+
+  * Grab upstream commit 923176024d3d6b7f5b392b4f9a07cce8c6ed3823 to
+    fix missing #endif.
+
+ -- Brice Goglin <bgoglin@debian.org>  Wed, 29 Aug 2007 20:36:13 +0200
+
+xdm (1:1.1.6-1) unstable; urgency=low
+
+  [ Debconf translation updates ]
+  * Romanian updated. Closes: #421748
+  * Vietnamese updated. Closes: #427192
+
+  [ Brice Goglin ]
+  * Update to new xsfbs which does not call laptop-detect anymore,
+    closes: #438098.
+  * New upstream release.
+    + Fix non-existing section in the manpage, thanks Luca Capello,
+      closes: #376391.
+    + Revert "Set path to xrdb and default session in debian/rules"
+      now that it is properly fixed upstream.
+
+ -- Brice Goglin <bgoglin@debian.org>  Wed, 29 Aug 2007 09:48:33 +0200
+
+xdm (1:1.1.5-2) unstable; urgency=low
+
+  * Set path to xrdb and default session in debian/rules to work around a bug
+    in configure.ac (closes: #437961).
+
+ -- Julien Cristau <jcristau@debian.org>  Thu, 16 Aug 2007 04:52:04 +0200
+
+xdm (1:1.1.5-1) unstable; urgency=low
+
+  * Use /usr/bin/xdm instead of /usr/bin/X11/xdm in the init script and in the
+    debconf templates.  On upgrades, if /etc/X11/default-display-manager
+    contains /usr/bin/X11/xdm, change it to /usr/bin/xdm (closes: #382418).
+  * New upstream release
+    + fixes race condition in policy.c:Willing() (closes: #256299).
+    + xdm_fixes.diff, debian.diff: drop our changes to config/Xresources.cpp.
+      They don't apply on top of 1.1.5.
+  * Build against libXft (closes: #427233).
+  * Use lsb functions for init script output (closes: #419143).
+
+ -- Julien Cristau <jcristau@debian.org>  Tue, 14 Aug 2007 15:58:19 +0200
+
+xdm (1:1.1.4-3) unstable; urgency=low
+
+  [ Christian Perrier ]
+  * New debconf templates translation:
+    - Korean. Closes: #418073
+
+  [ Julien Cristau ]
+  * Upload to unstable.
+
+ -- Julien Cristau <jcristau@debian.org>  Mon, 09 Apr 2007 04:23:22 +0200
+
+xdm (1:1.1.4-2) experimental; urgency=low
+
+  [ Brice Goglin ]
+  * Restore Provides: x-display-manager which got lost during transition
+    to modular packages. (closes: #384686).
+
+  [ Christian Perrier ]
+  * Debconf templates rewrite by debian-l10n-english team:
+    - Templates proofread and slightly rewritten. Closes: #415772
+    - Translation updates:
+      - Slovak. Closes: #415809, #415822
+      - Russian. Closes: #415812
+      - Swedish. Closes: #415817
+      - Catalan. Closes: #415821
+      - Japanese. Closes: #415823
+      - Galician. Closes: #415828
+      - Basque. Closes: #415843
+      - Czech. Closes: #416037
+      - German. Closes: #416051
+      - Italian. Closes: #416169
+      - Malayalam. Closes: #416392
+      - Tamil. Closes: #416394
+      - Simplified Chinese. Closes: #416565
+      - Dutch. Closes: #416988
+      - French
+      - Brazilian Portuguese. Closes: #417660
+      - Portuguese. Closes: #417654
+
+ -- Julien Cristau <jcristau@debian.org>  Thu, 05 Apr 2007 23:05:16 +0200
+
+xdm (1:1.1.4-1) experimental; urgency=low
+
+  * New upstream release.
+    + Refresh/update all patches.
+    + Drop style and whitespace changes from xdm_fixes.diff, as they won't
+      apply cleanly.
+    + Patch to fix FTBFS on non-linux GNU systems applied upstream
+      (closes: #377023).
+  * Add LSB dependency information to xdm's init script, using patch from
+    Petter Reinholdtsen <pere@hungry.com> (closes: #335388).
+  * Install upstream ChangeLog.
+  * Change my email address in debian/control.
+
+ -- Julien Cristau <jcristau@debian.org>  Wed,  7 Feb 2007 00:08:12 +0100
+
+xdm (1:1.0.5-2) unstable; urgency=high
+
+  * On initial install, don't check if xdm is already running, because
+    start-stop-daemon in d-i always returns true (closes: #407342). Thanks to
+    Joey Hess for the report.
+  * Add myself to Uploaders, and remove Fabio and Branden with their
+    permission.  They're welcome back whenever they have more time!
+
+ -- Julien Cristau <julien.cristau@ens-lyon.org>  Mon, 22 Jan 2007 09:27:20 +0100
+
+xdm (1:1.0.5-1) unstable; urgency=high
+
+  [ Eugene Konev ]
+  * New upstream release. Fixes security bug on linux-2.6 kernels.
+  * Don't build-depend on libselinux1-dev on non-linux arches, thanks
+    Michael Banck and Christian Perrier (closes: #369519)
+  * Fix init script reload target, thanks Alexandr Kazda (closes: #365548)
+  * Fix authDir reference in xdm(1), thanks Kevin Ryde (closes: #373138)
+  * Update README.Debian, thanks Kevin Ryde (closes: #373870)
+  * Pass APP_MAN_SUFFIX=1 to configure explicitely.
+
+ -- David Nusinow <dnusinow@debian.org>  Fri, 30 Jun 2006 00:42:11 -0400
+
+xdm (1:1.0.4-2) unstable; urgency=low
+
+  * Pre-depend on x11-common. Thanks Eugene Konev.
+  * Update standards version to 3.7.2.0
+  * Bump debhelper compat to version 5
+
+ -- David Nusinow <dnusinow@debian.org>  Mon, 22 May 2006 21:00:54 -0400
+
+xdm (1:1.0.4-1) unstable; urgency=low
+
+  * New upstream release
+  * Version x11-common dependency. Thanks Olivier Ponsini, Ian Bruce,
+    and Steve Langasek. (closes: #365134)
+
+ -- David Nusinow <dnusinow@debian.org>  Thu, 18 May 2006 23:25:22 -0400
+
+xdm (1:1.0.1-6) unstable; urgency=low
+
+  * I'll just add this to the pile of brown paper bags on my head. Actually
+    patch on build. Thanks Eugene Konev for the patch. (closes: #362149)
+  * Swap the dependency on xmessage | xbase-clients to xbase-clients |
+    xmessage. xmessage as a package doesn't exist in Debian, and this version
+    will allow installation on both Ubuntu and Debian.
+  * Add build-depends on quilt. Thanks Peter Jordan. (closes: #362149)
+
+ -- David Nusinow <dnusinow@debian.org>  Sat, 15 Apr 2006 13:14:07 -0400
+
+xdm (1:1.0.1-5) unstable; urgency=low
+
+  * Patch on build. Thanks Martin Stolle and Eugene Konev. (closes: #362149)
+
+ -- David Nusinow <dnusinow@debian.org>  Wed, 12 Apr 2006 20:24:16 -0400
+
+xdm (1:1.0.1-4) unstable; urgency=low
+
+  [ Denis Barbier ]
+  * debian/xdm.pam: Let PAM read locale variables from /etc/default/locale.
+
+  [ David Nusinow ]
+  * Upload to unstable
+
+ -- David Nusinow <dnusinow@debian.org>  Tue,  4 Apr 2006 18:44:41 -0400
+
+xdm (1:1.0.1-3) UNRELEASED-experimental; urgency=low
+
+  * Resurrect debconf usage.
+
+ -- Denis Barbier <barbier@debian.org>  Wed, 15 Mar 2006 01:17:13 +0100
+
+xdm (1:1.0.1-2) experimental; urgency=low
+
+  [ David Nusinow ]
+  * Fix PATH in xdm-config. Thanks Nicolas Bonifas. (closes: #353974)
+  * Port patches from trunk
+    + hurd/810_xdm_utsname.diff
+  * Use epoch'ed versions of build-depends for xlibs. Thanks Kurt Roeckx.
+    (closes: #354099)
+
+ -- David Nusinow <dnusinow@debian.org>  Sun, 12 Mar 2006 14:05:02 -0500
+
+xdm (1:1.0.1-1) experimental; urgency=low
+
+  [ Eugene Konev ]
+  * First release of modular package.
+  * Simplify initscript by using start-stop-daemon built-in
+    functionality.
+  * Move /etc/X11/xdm/pixmaps to /usr/share/X11/xdm/pixmaps. They are
+    definitely not conffiles. (closes #79962)
+  * Move chooser to /usr/lib/X11/xdm in accordance with new policy (8.1).
+  * Ship (empty for now) Xsetup, so we don't break users' setups which
+    use it (closes #347857)
+  * autoreconf due to patches to configure.ac
+
+ -- David Nusinow <dnusinow@debian.org>  Mon, 20 Feb 2006 22:03:05 -0500

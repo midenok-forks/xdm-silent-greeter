@@ -1,0 +1,16 @@
+From: Branden Robinson <branden@debian.org>
+Subject: spelling fix
+
+Index: xdm/dm.c
+===================================================================
+--- xdm.orig/dm.c
++++ xdm/dm.c
+@@ -380,7 +387,7 @@
+ 	 *
+ 	 * See defect XWSog08655 for more information.
+ 	 */
+-	Debug ("Child xdm caught SIGTERM before it remove that signal.\n");
++	Debug ("Child xdm caught SIGTERM before it removed that signal.\n");
+ 	(void) Signal (n, SIG_DFL);
+ 	TerminateProcess (getpid(), SIGTERM);
+ 	errno = olderrno;

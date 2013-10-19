@@ -1,0 +1,37 @@
+# these should either be upstream or killed yesterday
+00_warning_fixes.diff
+01_xdm_include_fcntl.diff
+02_xdm_zombie_no_error.diff
+03_spelling.diff
+04_xdm_init_log_earlier.diff
+
+# this one might need some ifdefs
+06_hurd_utsname.diff
+
+# log and debug stuff, to kill or send upstream
+07_xdm_more_debug.diff
+08_xdm_execute_more_debug.diff
+09_xdm_syserrormsg.diff
+10_xdm_better_logging.diff
+11_xdm_strerror.diff
+
+12_remove_pidfile.diff
+
+# not sure this one is still relevant now we use mkstemp
+15_xdm_openfiles.diff
+
+20_xdm_log_timestamp.diff
+21_xdm_log_append.diff
+
+90_xdm_write_dummy_auth.diff
+# depends on patch 90
+91_xdm_saveserverauth_logging.diff
+
+#xdm_fixes.diff is now split up in the above patches
+
+log_sourcing_better.diff
+selinux_support.diff
+support_logfile_rotation.diff
+openlog.diff
+storepid_rewrite.diff
+debian.diff

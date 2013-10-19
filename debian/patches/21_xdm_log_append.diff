@@ -1,0 +1,46 @@
+From: Branden Robinson <branden@debian.org>
+Subject: Append to the log file if it already exists
+
+Index: xdm/error.c
+===================================================================
+--- xdm.orig/error.c
++++ xdm/error.c
+@@ -168,17 +168,26 @@
+     }
+ }
+ 
+-void InitErrorLog (void)
++void
++InitErrorLog (void)
+ {
+-	int	i;
+-	if (errorLogFile[0]) {
+-		i = creat (errorLogFile, 0666);
+-		if (i != -1) {
+-			if (i != 2) {
+-				dup2 (i, 2);
+-				close (i);
+-			}
+-		} else
+-			LogError ("Cannot open errorLogFile %s\n", errorLogFile);
+-	}
++    int fd;
++
++    if (errorLogFile[0]) {
++	/* create the log file if it doesn't already exist */
++	fd = open (errorLogFile, O_WRONLY|O_CREAT|O_EXCL, 0666);
++	if (fd == -1)
++	    if (errno == EEXIST)
++		/* log file already exists; append to it */
++		fd = open (errorLogFile, O_WRONLY|O_APPEND);
++	if (fd != -1) {
++	    /* redirect stderr to the log file */
++	    if (fd != 2) {
++		dup2 (fd, 2);
++		close (fd);
++	    }
++	} else
++	    fprintf (stderr, "cannot open log file %s: %s\n", errorLogFile,
++		     _SysErrorMsg (errno));
++    }
+ }
