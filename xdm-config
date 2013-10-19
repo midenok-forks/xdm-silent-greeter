@@ -1,0 +1,2 @@
+DisplayManager.greeterLib: /home/midenok/src/xdm-1.1.10-modified/build/greeter/.libs/libXdmGreet.so
+DisplayManager*resources:  /home/midenok/src/xdm-1.1.10-modified/xdm-Xresources
