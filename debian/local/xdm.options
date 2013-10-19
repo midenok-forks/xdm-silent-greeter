@@ -1,9 +1,0 @@
-# $Id: xdm.options 189 2005-06-11 00:04:27Z branden $
-#
-# configuration options for xdm
-# See xdm.options(5) for an explanation of the available options.
-
-no-ignore-nologin
-no-restart-on-upgrade
-no-start-on-install
-use-sessreg

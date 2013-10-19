@@ -1,2 +1,0 @@
-xdm-silent-greeter
-==================
